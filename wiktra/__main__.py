@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-"""
+""" """
+
+import logging
+import sys
+from argparse import ArgumentParser
+from pathlib import Path
 
 import wiktra
-from argparse import ArgumentParser
-import logging
-from pathlib import Path
-import sys
 
 PROG = "wiktrapy"
 
@@ -64,7 +63,7 @@ def cli():
         "-V",
         "--version",
         action="version",
-        version="%s %s" % (PROG, wiktra.__version__),
+        version=f"{PROG} {wiktra.__version__}",
         help="show version and exit",
     )
     return parser
@@ -83,7 +82,7 @@ def main(*args, **kwargs):
     logging.debug("Running with options:\n%s" % repr(opts))
     del opts["verbose"]
     if opts["in_file"]:
-        with open(Path(opts["in_file"]), "r", encoding="utf8") as f:
+        with open(Path(opts["in_file"]), encoding="utf8") as f:
             text = f.read()
     elif opts["text"]:
         text = opts["text"]
@@ -91,8 +90,8 @@ def main(*args, **kwargs):
         text = sys.stdin.read().rstrip()
     tr = wiktra.Wiktra.Transliterator()
     if opts.get("stats", False):
-        print(f'{len(tr.mod_map.keys())} scripts: {" ".join(tr.mod_map.keys())}')
-        print(f'{len(tr.lang_tags)} orthographies: {" ".join(tr.lang_tags)}')
+        print(f"{len(tr.mod_map.keys())} scripts: {' '.join(tr.mod_map.keys())}")
+        print(f"{len(tr.lang_tags)} orthographies: {' '.join(tr.lang_tags)}")
     else:
         res = tr.tr(
             text,

@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 # pip install pywikiapi
 
 import argparse
-import logging
-import subprocess
-import re
 import json
-from wiktra.Wiktra import *
-from yaplon import reader, writer
+import logging
+import re
+import subprocess
 from collections import OrderedDict
-import langcodes
 
+import langcodes
 import pywikiapi
+from wiktra.Wiktra import *
+
+from yaplon import reader, writer
 
 logging.basicConfig(level=logging.INFO)
 
@@ -28,8 +28,7 @@ def sortOD(od):
     return res
 
 
-class WiktionaryModuleDownload(object):
-
+class WiktionaryModuleDownload:
     re_require = re.compile(r"""(require|loadData)[\( ]['"][Mm]odule:(.*?)['"]""")
     exclude_modules = [
         "ja",
@@ -109,7 +108,7 @@ class WiktionaryModuleDownload(object):
             )
         elif page in ("xal-translit"):
             text = text.replace(
-                """\ʺ""",
+                r"""\ʺ""",
                 """ʺ""",
             )
         elif page in ("UnitTests"):
@@ -152,7 +151,7 @@ class WiktionaryModuleDownload(object):
                 with open(outpath, "w", encoding="utf-8") as f:
                     f.write(text)
                 self.preprocess_lua_file(outpath)
-                with open(outpath, "r", encoding="utf-8") as f:
+                with open(outpath, encoding="utf-8") as f:
                     text = f.read()
                 for fun, mod in self.re_require.findall(text):
                     if mod not in self.downloaded and self.deps:
@@ -175,12 +174,11 @@ class WiktionaryModuleDownload(object):
         if len(prefix):
             to_exec = f"""{prefix}/{mod}"""
         logging.info(f"Executing {to_exec}")
-        res = ""
         path = Path(self.lua_folder, to_exec + ".lua")
-        with open(Path(path), "r", encoding="utf8") as f:
+        with open(Path(path), encoding="utf8") as f:
             lua_str = f.read()
             try:
-                res = self.tr.e(lua_str)
+                self.tr.e(lua_str)
             except lupa._lupa.LuaError as err:
                 mods = re.findall(r"""module '(.*?)' not found""", str(err))
                 for smod in mods:
@@ -193,23 +191,21 @@ class WiktionaryModuleDownload(object):
         return None
 
     def _rebuild_data(self):
-        lua_str = f"""res = require("JSON").toJSON(require("make-data-lang"))"""
+        lua_str = """res = require("JSON").toJSON(require("make-data-lang"))"""
         self.data_lang = json.loads(self.tr.e(lua_str))
-        with open(
-            Path(self.data_folder, "data_custom.yaml"), "r", encoding="utf-8"
-        ) as f:
+        with open(Path(self.data_folder, "data_custom.yaml"), encoding="utf-8") as f:
             data_custom = reader.yaml(f)
         self.data_lang.update(data_custom)
 
     def _fix_script(self, script):
-        suffix = ''
+        suffix = ""
         script_rec = script.split("-")
         if len(script_rec) > 1:
             script_iso = script_rec[1]
-        elif script == 'polytonic':
+        elif script == "polytonic":
             script = "Grek-polyton"
             script_iso = "Grek"
-            suffix += f'''polyton'''
+            suffix += """polyton"""
         else:
             script_iso = script
         return script, script_iso, suffix
@@ -219,11 +215,13 @@ class WiktionaryModuleDownload(object):
         self.data["Latn"] = OrderedDict()
         for k, v in self.data_lang.items():
             script, script_iso, script_suffix = self._fix_script(
-                v.get("script", "Latn"))
+                v.get("script", "Latn")
+            )
             to_script, to_script_iso, to_script_suffix = self._fix_script(
-                v.get("to_script", "Latn"))
+                v.get("to_script", "Latn")
+            )
             lang = v.get("lang", "und")
-            lang_tag = ''
+            lang_tag = ""
             lang_code = None
             lang_suf = None
             if len(lang):
@@ -232,45 +230,46 @@ class WiktionaryModuleDownload(object):
                 if len(lang_rec) > 1:
                     lang_suf = lang_rec[1]
             if lang_code:
-                lang_tag += f'{lang_code}-'
-            lang_tag += f'{script_iso}'
+                lang_tag += f"{lang_code}-"
+            lang_tag += f"{script_iso}"
             if script_suffix:
-                lang_tag += f'-x-{script_suffix}'
+                lang_tag += f"-x-{script_suffix}"
             if lang_suf:
-                lang_tag += f'-x-{lang_suf}'
+                lang_tag += f"-x-{lang_suf}"
             lang_data = dict(v)
-            if 'translit' in lang_data:
-                del lang_data['translit']
-                if 'translit_override' in lang_data:
-                    del lang_data['translit_override']
+            if "translit" in lang_data:
+                del lang_data["translit"]
+                if "translit_override" in lang_data:
+                    del lang_data["translit_override"]
                 self.data[script_iso] = self.data.get(script_iso, OrderedDict())
-                self.data[script_iso][lang] = self.data[script_iso].get(
-                    lang, lang_data)
-                self.data[script_iso][lang][
-                    'script_iso'] = script_iso
-                self.data[script_iso][lang][
-                    'script_suffix'] = script_suffix
-                self.data[script_iso][lang]['lang_tag'] = lang_tag
+                self.data[script_iso][lang] = self.data[script_iso].get(lang, lang_data)
+                self.data[script_iso][lang]["script_iso"] = script_iso
+                self.data[script_iso][lang]["script_suffix"] = script_suffix
+                self.data[script_iso][lang]["lang_tag"] = lang_tag
                 lc = langcodes.Language.get(lang_tag)
-                self.data[script_iso][lang][
-                    'population'] = lc.speaking_population()
+                self.data[script_iso][lang]["population"] = lc.speaking_population()
                 self.data[script_iso][lang][to_script_iso] = self.data[script_iso][
-                    lang].get(to_script_iso, OrderedDict())
-                self.data[script_iso][lang][to_script_iso]['script_iso'] = to_script_iso
-                self.data[script_iso][lang][to_script_iso]['script'] = to_script
-                self.data[script_iso][lang][to_script_iso]['translit'] = v.get('translit', '')
-                self.data[script_iso][lang][to_script_iso]['override'] = v.get('translit_override', False)
+                    lang
+                ].get(to_script_iso, OrderedDict())
+                self.data[script_iso][lang][to_script_iso]["script_iso"] = to_script_iso
+                self.data[script_iso][lang][to_script_iso]["script"] = to_script
+                self.data[script_iso][lang][to_script_iso]["translit"] = v.get(
+                    "translit", ""
+                )
+                self.data[script_iso][lang][to_script_iso]["override"] = v.get(
+                    "translit_override", False
+                )
 
     def _find_best_lang_for_script(self):
         und = None
         for script, langs in self.data.items():
-            if 'und' not in langs:
+            if "und" not in langs:
                 und = OrderedDict()
-                und['population'] = -1
+                und["population"] = -1
                 for lang, langrec in langs.items():
-                    if langrec['population'] > und['population']:
+                    if langrec["population"] > und["population"]:
                         und = langrec
-                langs['und'] = und
+                langs["und"] = und
 
     def _save_data(self):
         data = sortOD(self.data)
@@ -281,13 +280,9 @@ class WiktionaryModuleDownload(object):
 
     def update_data(self):
         self._rebuild_data()
-        with open(Path(self.data_folder, "data_lang.json"),
-                  "w",
-                  encoding="utf-8") as f:
+        with open(Path(self.data_folder, "data_lang.json"), "w", encoding="utf-8") as f:
             json.dump(self.data_lang, f)
-        with open(Path(self.data_folder, "data_lang.yaml"),
-                  "w",
-                  encoding="utf-8") as f:
+        with open(Path(self.data_folder, "data_lang.yaml"), "w", encoding="utf-8") as f:
             writer.yaml(self.data_lang, f)
         self._struct_data()
         self._find_best_lang_for_script()
@@ -296,7 +291,7 @@ class WiktionaryModuleDownload(object):
     def test_load(self):
         reqs = []
         mods = [
-            str(Path(p.parent, p.stem)).replace(str(self.lua_folder), 'translit')
+            str(Path(p.parent, p.stem)).replace(str(self.lua_folder), "translit")
             for p in Path(self.lua_folder).glob("**/*.lua")
         ]
         for mod in mods:
@@ -391,6 +386,7 @@ def main(*args, **kwargs):
         wkd.test_load()
         logging.info("# Updating data")
         wkd.update_data()
+
 
 if __name__ == "__main__":
     main()
