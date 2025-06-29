@@ -1,6 +1,17 @@
 
 # Changelog
 
+## Unreleased (2025-06-25)
+
+### Changed
+- Code cleanup and refactoring in main modules (Wiktra.py, __main__.py, update.py)
+- Minor formatting improvements across Python files
+- Updated module imports
+
+### Technical
+- Auto-commit from local development environment
+- Added .DS_Store files (macOS metadata - should be gitignored)
+
 ## Version 2.0.5 (2021-08-11)
 
 - added `tr` function in addition to `translite`
