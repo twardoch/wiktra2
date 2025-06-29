@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
-import os
-from pathlib import Path
-from lupa import LuaRuntime
-import logging
 import json
+import logging
+import os
+from collections import Counter
+from pathlib import Path
+
 import langcodes
 from fontTools import unicodedata as ucd
-from collections import Counter
+from lupa import LuaRuntime
 
 lua_folder = str(Path(Path(__file__).parent))
 
@@ -19,7 +19,7 @@ os.environ["LUA_PATH"] = ";".join(
         f"{lua_folder}/wikt/translit/?.lua",
         f"{lua_folder}/wikt/data/?.lua",
         f"{lua_folder}/wikt/data/translit/?.lua",
-        f"{os.environ.get('LUA_PATH','')}",
+        f"{os.environ.get('LUA_PATH', '')}",
     ]
 )
 
@@ -181,7 +181,6 @@ lang_map = {
     "lzz": ("geor", "Geor"),
     "xmf": ("geor", "Geor"),
     "oge": ("geor", "Geor"),
-    "geo": ("geor", "Geor"),
     "udi": ("geor", "Geor"),
     "niv": ("niv", "Cyrl"),
     "xlc": ("lyci", "Lyci"),
@@ -225,13 +224,11 @@ lang_map = {
 }
 
 
-class Transliterator(object):
+class Transliterator:
     def __init__(self):
         self.lua = LuaRuntime(unpack_returned_tuples=True)
         self.lua.execute("mw = require('wikt.mw')")
-        with open(
-            Path(lua_folder, "wikt", "data", "data.json"), "r", encoding="utf-8"
-        ) as f:
+        with open(Path(lua_folder, "wikt", "data", "data.json"), encoding="utf-8") as f:
             self.mod_map = json.load(f)
         self.lang_tags = []
         for sc, langs in self.mod_map.items():
@@ -262,7 +259,7 @@ class Transliterator(object):
         return lang, sc
 
     def lua_text(self, text):
-        return text.replace('\n',r'\n')
+        return text.replace("\n", r"\n")
 
     def tr_legacy(self, text, lang):
         lang, sc = lang_map[lang.lower()]
@@ -312,4 +309,3 @@ def translite(text, lang):
 def tr(text, lang="und", sc=None, to_sc="Latn", explicit=False):
     tr = Transliterator()
     return tr.tr(text, lang="und", sc=None, to_sc="Latn", explicit=False)
-
